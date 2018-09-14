@@ -1,7 +1,7 @@
 # vue-amap-gmap
 
 > 基于vue、vue-amap 和 高德原生sdk的高德地图组件
-## [项目预览](www.calamus.xyz)
+## [项目预览](https://calamus0427.github.io/vue-gmap/index.html)
 
 
 ## 启动和构建
