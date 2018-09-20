@@ -11,13 +11,13 @@
       </el-select>
         <el-button-group v-show="svgChoose == 1">
           <el-button @click="addCircle">添加圆</el-button>
-          <el-button  @click="editCircle">编辑圆</el-button>
+          <el-button @click="editCircle">编辑圆</el-button>
           <el-button @click="exitCircle">结束编辑圆</el-button>
           <el-button @click="removeCircle">del circle</el-button>
         </el-button-group>
         <el-button-group v-show="svgChoose == 5">
           <el-button @click="addPolygon">添加多边形</el-button>
-          <el-button  @click="editPolygon">编辑多边形</el-button>
+          <el-button @click="editPolygon">编辑多边形</el-button>
           <el-button @click="exitPolygon">结束编辑多边形</el-button>
           <el-button @click="removePolygon">del多边形</el-button>
         </el-button-group>
@@ -43,6 +43,7 @@
         :plugin="plugin"
         :events="events"
       >
+      <div v-show="false" id="panel"></div>
       <el-amap-marker  zIndex="2000" class="aaaaa" icon="http://pevw4ryx8.bkt.clouddn.com/default_2x-fs.png" @click.stop="markerClick" :clickable="clickable" :position="mapCenter"></el-amap-marker>
       <el-amap-marker cursor="pointer" :bubble="bubble" :clickable="clickable" v-for="(marker,index) in markers" :key="index" :position="marker.poi" :title="marker.address" @click.stop="markerClick"></el-amap-marker>
       <!-- circle -->
@@ -56,7 +57,6 @@
   import VueAMap from 'vue-amap'
   import { lazyAMapApiLoaderInstance,AMapManager } from 'vue-amap';
   const amapManager = new VueAMap.AMapManager();
-
 /**
  * 高德地图组件
  * ----------------------
@@ -108,20 +108,55 @@ export default {
     chooseArea:{
       type:Boolean,
       default:true
+    },
+    //选择轨迹模式 1:推荐火车路线形式 2:自定义marker形式 3:巡航模式
+    TruckDrivingFlag:{
+      type:Number,
+      default:3
+    },
+    drivingable:{
+      type:Boolean,
+      default:false
+    },
+    //途经坐标
+    lineArr:{
+      type:Array,
+      default:()=>{
+        return [] ;
+      }
+    },
+    //起点
+    lineStart:{
+      type:Array,
+      default:()=>{
+        return [] ;
+      }
+    },
+    //终点
+    lineEnd:{
+      type:Array,
+      default:()=>{
+        return [] ;
+      }
+    },
+    trackStop:{
+      type:Boolean,
+      default:true
     }
+
   },
   data(){
     let self = this ;
     return {
       amapManager,
       map:null,
-      AMap:null,
       geocoder:null,
       ruler:null,
       mouseTool:null,
       mPolygon:null,
       flagBit: false, //绘制围栏标志位
       renderFenceOk: false, //绘制围栏成功标志位
+      driving:null, //轨迹
       fenceArr:[],
       mapCenter:[],
       svgChoose:'',
@@ -163,6 +198,7 @@ export default {
             }, false);
             //绘制完成触发此事件
             self.mouseTool.on("draw", (resData) => {
+              console.log("draw",resData.obj.getPath())
               self.flagBit = false ;
               self.mouseTool.close(false) //停止画好的围栏
               // 把坐标点传给连接坐标点插件
@@ -170,8 +206,10 @@ export default {
                 return [item.lng, item.lat]
               })
             })
+
+          console.log("init",map.getCenter())
           map.getCity(result => {
-            console.log(" map init success ",result)
+            console.log("init map",result)
           })
 
           //测距直线line
@@ -214,6 +252,185 @@ export default {
             self.ruler.turnOff(true);
               self.flagBit = false ;
             }, false);
+
+
+
+
+            //推荐轨迹
+            if(self.drivingable && self.TruckDrivingFlag == 1){
+              this.driving = new AMap.TruckDriving({
+                      map: map,
+                      policy:0,
+                      size:1,
+                      city:'shanghai',
+                      panel:'panel'
+              });
+              var path = [];
+              path.push({lnglat:[116.303843, 39.983412]});//起点
+              path.push({lnglat:[116.321354, 39.896436]});//途径
+              path.push({lnglat:[116.407012, 39.992093]});//终点
+              this.driving.search(path,function(status, result) {
+                      //TODO something
+                      console.log("guiji")
+              });
+            }
+
+            //轨迹巡航
+            else if(self.drivingable && self.TruckDrivingFlag == 2){
+              AMapUI.load(['ui/misc/PathSimplifier', 'lib/$'], function(PathSimplifier, $) {
+
+                if (!PathSimplifier.supportCanvas) {
+                    alert('当前环境不支持 Canvas！');
+                    return;
+                }
+
+                var pathSimplifierIns = new PathSimplifier({
+                    zIndex: 100,
+                    //autoSetFitView:false,
+                    map: map, //所属的地图实例
+
+                    getPath: function(pathData, pathIndex) {
+
+                        return pathData.path;
+                    },
+                    getHoverTitle: function(pathData, pathIndex, pointIndex) {
+
+                        if (pointIndex >= 0) {
+                            //point
+                            return pathData.name + '，点：' + pointIndex + '/' + pathData.path.length;
+                        }
+
+                        return pathData.name + '，点数量' + pathData.path.length;
+                    },
+                    renderOptions: {
+
+                        renderAllPointsIfNumberBelow: 100 //绘制路线节点，如不需要可设置为-1
+                    }
+                });
+
+                window.pathSimplifierIns = pathSimplifierIns;
+
+                //设置数据
+                pathSimplifierIns.setData([{
+                    name: '路线0',
+                    path: [
+                        [116.405289, 39.904987],
+                        [113.964458, 40.54664],
+                        [111.47836, 41.135964],
+                        [108.949297, 41.670904],
+                        [106.380111, 42.149509],
+                        [103.774185, 42.56996],
+                        [101.135432, 42.930601],
+                        [98.46826, 43.229964],
+                        [95.777529, 43.466798],
+                        [93.068486, 43.64009],
+                        [90.34669, 43.749086],
+                        [87.61792, 43.793308]
+                    ]
+                }]);
+
+                  //initRoutesContainer(d);
+
+                function onload() {
+                    pathSimplifierIns.renderLater();
+                }
+
+                function onerror(e) {
+                    alert('图片加载失败！');
+                }
+
+                //对第一条线路（即索引 0）创建一个巡航器
+                var navg1 = pathSimplifierIns.createPathNavigator(0, {
+                    loop: false, //循环播放
+                    speed: 1000000, //巡航速度，单位千米/小时
+                    pathNavigatorStyle: {
+                      width: 24,
+                      height: 24,
+                      //使用图片
+                      content: PathSimplifier.Render.Canvas.getImageContent('https://webapi.amap.com/images/car.png', onload, onerror),
+                      strokeStyle: null,
+                      fillStyle: null,
+                      //经过路径的样式
+                      pathLinePassedStyle: {
+                          lineWidth: 6,
+                          strokeStyle: 'black',
+                          dirArrowStyle: {
+                              stepSpace: 15,
+                              strokeStyle: 'red'
+                          }
+                      }
+                    }
+                });
+
+                navg1.start();
+              })
+            }
+
+            //自定义路径轨迹
+            else if(self.drivingable && self.TruckDrivingFlag == 3){
+
+              var lineArr = [] ;
+              let len = self.lineArr.length ;
+              var lineStart = self.lineStart;
+              var lineEnd = self.lineEnd;
+              var customMarker = new AMap.Marker({
+                  map: map,
+                  position: [116.397428, 39.983412],
+                  icon: "https://webapi.amap.com/images/car.png",
+                  offset: new AMap.Pixel(-26, -13),
+                  autoRotation: true
+              });
+              for (var i = 1; i < len; i++) {
+                  lineArr.push(new AMap.LngLat(self.lineArr[i][0],self.lineArr[i][1]));
+              };
+                // 绘制轨迹
+              var polyline = new AMap.Polyline({
+                  map: map,
+                  path: lineArr,
+                  strokeColor: "#00A",  //线颜色
+                  strokeOpacity: 0.8,     //线透明度
+                  strokeWeight: 3,      //线宽
+                  strokeStyle: "dashed"  //线样式
+              });
+              var passedPolyline = new AMap.Polyline({
+                  map: map,
+                  // path: lineArr,
+                  strokeColor: "#F06292",  //线颜色
+                  strokeOpacity: 1,     //线透明度
+                  strokeWeight: 3,      //线宽
+                  strokeStyle: "solid"  //线样式
+              });
+
+              customMarker.on('moving',function(e){
+                  passedPolyline.setPath(e.passedPath);
+                  if(e.passedPath.length -1 >=0){
+                    var end = e.passedPath[e.passedPath.length -1] ;
+                    if( Math.abs(end.lng - lineEnd[0] ) <= 0.001 && Math.abs(end.lat - lineEnd[1]) <= 0.001){
+                      console.log("stop")
+                      customMarker.stopMove();
+                  }
+                  }else{
+                      customMarker.stopMove();
+                  }
+              })
+              map.setFitView();
+              //开始运动
+              if(self.trackStop){
+                console.log("start")
+                customMarker.moveAlong(lineArr, 5000);
+              }else{
+                console.log("resetStop")
+                customMarker.stopMove();
+              }
+              //暂停
+              // customMarker.pauseMove();
+              //继续
+              //  customMarker.resumeMove();
+              //结束
+              // customMarker.stopMove();
+
+            }
+
         },
       'moveend': () => {
       },
@@ -226,10 +443,13 @@ export default {
             this.mapCenter = [lng ,lat];
             this.getAddress([lng ,lat]);
             let message = self.getAddress([lng ,lat]);
+            this.$nextTick(()=>{
+              console.log(self.getAddress([lng ,lat]),"111",message)
+            });
         }
       }
       },
-      plugin: ['AMap.RangingTool','ToolBar', 'MapType', 'Scale', 'AMap.EllipseEditor', 'AMap.RectangleEditor',
+      plugin: ['AMap.TruckDriving','AMap.RangingTool','ToolBar', 'MapType', 'Scale', 'AMap.EllipseEditor', 'AMap.RectangleEditor',
       'AMap.PolyEditor', 'AMap.MouseTool'],
       circle:{
               editable:false,
@@ -239,7 +459,7 @@ export default {
               fillOpacity: 0.5,
               events: {
                 click: () => {
-                  console.log('click circle');
+                  console.log('click');
                 }
               }
       },
@@ -252,13 +472,13 @@ export default {
         events: {
           click: () => {
             console.log('click polygon');
+            console.log(amapManager.getComponent(0));
+            console.log(this.$refs.map.$$getCenter())
+            console.log(this.$refs.polygon_0[0].$$getPath())
           }
         }
       }
     }
-  },
-  created(){
-     this.AMap = window.AMap
   },
   mounted(){
       this.initMap();
@@ -268,6 +488,7 @@ export default {
       var mh = document.documentElement.clientHeight - this.flex > this.minHeight
       ? document.documentElement.clientHeight - this.flex
       : this.minHeight ;
+      console.log("height",mh)
       return mh + 'px'
     },
   },
@@ -279,9 +500,25 @@ export default {
           case '2':
             break;
         }
+    },
+    center(newVal,oldVal){
+      if(newVal){
+        this.mapCenter = newVal
+      }else{
+        this.mapCenter =  [121.59996, 31.197646]
+      }
     }
   },
   methods:{
+    // initMap(){
+    //   this.mapCenter = this.center ;
+    //   this.geocoder = new AMap.Geocoder({
+    //                         radius: 1000,
+    //                         extensions: "all"
+    //                       });
+    //   this.getAddress(this.mapCenter);
+    //   this.getLocation("上海市")
+    // },
     initMap(){
       lazyAMapApiLoaderInstance.load().then(() => {
         this.map = new AMap.Map('amapContainer', {
@@ -298,6 +535,7 @@ export default {
     },
     //经纬度返回地址
     getAddress(location){
+      var address ;
       this.geocoder.getAddress(location, (status, result)=> {
             if (status === 'complete' && result.info === 'OK') {
               if (result && result.regeocode) {
@@ -314,6 +552,7 @@ export default {
       this.geocoder.getLocation(address, (status, result) =>{
           if (status === 'complete' && result.info === 'OK') {
             // result中对应详细地理坐标信息
+            console.log("result",result.geocodes[0].location);
              let { lng, lat } = result.geocodes[0].location;
             this.currentPosition = [lng, lat];
           }
@@ -326,6 +565,7 @@ export default {
           this.markers.push([lng, lat]);
         },
     onSearchResult(pois) {
+      console.log("po",this.inputSearch,pois)
       let latSum = 0;
       let lngSum = 0;
       if (pois.length > 0) {
@@ -342,6 +582,7 @@ export default {
         };
         this.mapCenter = [center.lng, center.lat];
       }
+      console.log("mar",this.markers)
     },
     markerClick(res){
         console.log("markerClick",res)
@@ -414,7 +655,7 @@ export default {
   }
 }
 </script>
-<style scoped>
+<style  scoped>
 .amap-container {
       position: relative;
     }
@@ -441,4 +682,10 @@ export default {
     right: 10px;
     z-index: 10000;
   }
+          #panel{
+            position: fixed;
+            top:10px;
+            right: 10px;
+            width: 300px;
+        }
 </style>

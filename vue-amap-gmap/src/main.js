@@ -13,7 +13,7 @@ Vue.use(VueAMap)
 Vue.use(ElementUI);
 VueAMap.initAMapApiLoader({
   key: '8703164b6d9a53e64195238e3e17b1f3',
-  plugin: ['AMap.RangingTool', 'AMap.MouseTool', 'AMap.PolyEditor', 'AMap.CircleEditor', 'AMap.Autocomplete', 'AMap.EllipseEditor', 'AMap.RectangleEditor', 'AMap.PlaceSearch', 'AMap.Scale', 'AMap.OverView', 'AMap.ToolBar', 'AMap.MapType', 'AMap.PolyEditor', 'AMap.CircleEditor', 'AMap.Geocoder', 'Geolocation'],
+  plugin: ['AMap.TruckDriving', 'AMap.RangingTool', 'AMap.MouseTool', 'AMap.PolyEditor', 'AMap.CircleEditor', 'AMap.Autocomplete', 'AMap.EllipseEditor', 'AMap.RectangleEditor', 'AMap.PlaceSearch', 'AMap.Scale', 'AMap.OverView', 'AMap.ToolBar', 'AMap.MapType', 'AMap.PolyEditor', 'AMap.CircleEditor', 'AMap.Geocoder', 'Geolocation'],
   uiVersion: '1.0'
 })
 
