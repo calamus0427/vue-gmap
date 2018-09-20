@@ -20,11 +20,15 @@
         <p>城市为: {{ address }}</p>
       </div>
       <el-button @click="changePoi">切换位置</el-button>
-      <el-select v-model="TruckDrivingFlag" @change="truckChange">
-        <el-option :label="1" :value="1">1</el-option>
-        <el-option :label="2" :value="2">2</el-option>
-        <el-option :label="3" :value="3">3</el-option>
-      </el-select>
+      <div>
+         选择轨迹模式：
+         <el-select v-model="TruckDrivingFlag" @change="truckChange">
+            <el-option label="推荐线路模式" :value="1">推荐线路模式</el-option>
+            <el-option label="航线模式" :value="2">航线模式</el-option>
+            <el-option label="marker自定义模式" :value="3">marker自定义模式</el-option>
+          </el-select>
+      </div>
+
   </el-col>
 
 </el-row>
